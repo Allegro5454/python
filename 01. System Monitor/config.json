@@ -1,0 +1,19 @@
+[
+    {
+        "type":"StorageDrive",
+        "name":"Name of the drive",
+        "status":"Active",
+        "mount_point":"Disk mount point"
+    },
+    {
+        "type":"ServiceManager",
+        "name":"Name of the Service",
+        "status":"Active"
+    },
+    {
+        "type":"NetworkInterface",
+        "name":"Name of the Interface",
+        "status":"Active"
+    }
+    
+]
