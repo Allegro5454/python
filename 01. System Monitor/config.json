@@ -1,19 +1,27 @@
 [
     {
-        "type":"StorageDrive",
-        "name":"Name of the drive",
-        "status":"Active",
-        "mount_point":"Disk mount point"
-    },
-    {
         "type":"ServiceManager",
-        "name":"Name of the Service",
+        "name":"",
         "status":"Active"
     },
+    {
+        "type":"StorageDrive",
+        "name":"",
+        "status":"Active",
+        "mount_point":""
+    },
+    
     {
         "type":"NetworkInterface",
-        "name":"Name of the Interface",
+        "name":"",
         "status":"Active"
+    },
+    {
+        "type":"HOST",
+        "name":""
+    },
+    {
+        "type":"PORT",
+        "name":""
     }
-    
 ]

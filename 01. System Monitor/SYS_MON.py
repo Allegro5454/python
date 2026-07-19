@@ -1,7 +1,11 @@
-from pathlib import Path
+from http.server import HTTPServer, BaseHTTPRequestHandler 
+from socketserver import ThreadingMixIn
 import subprocess
 import psutil
 import json
+import logging
+import sys
+logging.basicConfig(level=logging.INFO)
 class SystemResource:
     def __init__(self, name, status):
         self.name = name
@@ -20,7 +24,7 @@ class ServiceManager(SystemResource):
         return active.stdout.strip() == "active"
     def check_health(self):
         if self.is_active():
-            return F'[Service] {self.name}: Running '
+            return f'[Service] {self.name}: Running '
         else:
             return f'[Service] {self.name}: Down '
     def to_dict(self):
@@ -42,14 +46,14 @@ class StorageDrive(SystemResource):
     def warn_if_full(self):
         usage = self.calculate_used_percentage()
         if usage  == -1:
-            return (F"Disk not found: {self.mount_point}")
+            return (f"Disk not found: {self.mount_point}")
         elif usage > 90:
             return "Drive is over 90% full"
         else:
             return "OK"
     def check_health(self):
         disk_info = self.warn_if_full()
-        return F'[DRIVE] {self.name} {self.mount_point} {disk_info}' 
+        return f'[DRIVE] {self.name} {self.mount_point} {disk_info}' 
     def to_dict(self):
         return {"type":"StorageDrive",
                 "name":self.name,
@@ -70,13 +74,13 @@ class NetworkInterface(SystemResource):
             return "Interface not found"
     def check_health(self):
         addr = self.get_ip_address()
-        return F'[NETWORK] {self.name} IP:{addr}'             
+        return f'[NETWORK] {self.name} IP:{addr}'             
     def to_dict(self):
         return {"type":"NetworkInterface",
                 "name":self.name,
                 "address":self.get_ip_address(),
                 }
-    
+
 class AuditorEngine:
     def __init__(self):
         self.components = [ ]
@@ -85,20 +89,70 @@ class AuditorEngine:
     def run_audit(self):
         log = [ ]
         for item in self.components:
-            print (item.check_health())
+            logging.info (item.check_health())
             log.append(item.to_dict())
         with open('audit_log.json', 'w') as log_file:
             json.dump(log, log_file, indent=4)
-engine = AuditorEngine()
+    def run_http(self):    
+        log2 = [ ]
+        for item in self.components:
+            logging.info (item.check_health())
+            log2.append(item.to_dict())
+        return json.dumps(log2)   
+def main():
+    engine = AuditorEngine()
+    class AuditorHandler(BaseHTTPRequestHandler):
+        def do_GET(self):
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json" )
+            self.end_headers()
+            json_data = engine.run_http()
+            self.wfile.write(bytes(json_data, "UTF-8"))
+    class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
+        daemon_threads = True
+    PORT = None
+    HOST= None
+    try:
+        with open('config.json', 'r') as file:
+            config_data = json.load(file)
+            for elem in config_data:
+                if elem["type"] == "ServiceManager":
+                    engine.add_resource( ServiceManager(elem["name"], elem["status"]) )
+                elif elem["type"] == "StorageDrive":
+                    engine.add_resource( StorageDrive( elem["name"], elem["status"], elem["mount_point"]))
+                elif elem["type"] == "NetworkInterface":
+                    engine.add_resource( NetworkInterface(elem["name"], elem["status"]))
+                elif elem["type"] == "HOST":
+                    HOST = elem["name"]
+                elif elem["type"] == "PORT":
+                    PORT = elem["name"]
+    except FileNotFoundError:
+        logging.critical("Config file not found")
+        sys.exit(1)
+    except json.JSONDecodeError:
+        logging.critical("Error in config file")
+        sys.exit(1)
+    server = None        
+    engine.run_audit()
+    if HOST is not None and PORT is not None:
+        try:
+            PORT = int(PORT)
+        except ValueError:
+            logging.critical("Port needs to be at least 1 number long")
+            sys.exit(1)
+        try:
+            server = ThreadedHTTPServer(( HOST, PORT), AuditorHandler)
+            server.serve_forever()
+        except KeyboardInterrupt:
+            pass
+        except OSError:        
+            logging.critical("Port occupied")
+            sys.exit(1)
+        finally:
+            if server is not None:
+                server.server_close()
 
-with open('config.json', 'r') as file:
-    config_data = json.load(file)
-    for elem in config_data:
-        if elem["type"] == "ServiceManager":
-            engine.add_resource( ServiceManager(elem["name"], elem["status"]) )
-        elif elem["type"] == "StorageDrive":
-            engine.add_resource( StorageDrive( elem["name"], elem["status"], elem["mount_point"]))
-        elif elem["type"] == "NetworkInterface":
-            engine.add_resource( NetworkInterface(elem["name"], elem["status"]))
- 
-engine.run_audit()
+    else:
+        logging.critical("Missing IP or Port")
+if __name__ == '__main__':
+    main()
