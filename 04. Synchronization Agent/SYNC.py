@@ -7,7 +7,6 @@ import json
 import shutil
 import datetime
 import logging
-logging.basicConfig(level=logging.info)
 from pathlib import Path
 parser = argparse.ArgumentParser()
 group = parser.add_mutually_exclusive_group()
@@ -15,7 +14,7 @@ parser.add_argument("--From", required=True, help="Path to input directory" )
 parser.add_argument("--To", required=True, help="Path to output directory")
 parser.add_argument("--verbose","-v",help="Shows additional information",action='store_true')
 group.add_argument("--log","-l",help="Saves information to a file")
-group.add_argument("--dryrun","-d",help="Let's you see what files will be moved, removed and unchanged")
+group.add_argument("--dryrun","-d",help="Lets you see what files will be moved, removed and unchanged")
 args = parser.parse_args()
 verbosity = args.verbose
 date = datetime.datetime.now()
