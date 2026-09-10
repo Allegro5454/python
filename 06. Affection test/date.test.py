@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 #def dating(stdscr, max_x):
 #    complement = complements[complement_num]
 #    affection = 0
@@ -128,3 +129,8 @@
 #            stdscr.refresh()
 #            player_move(stdscr, grid, player_y, player_x)
 #
+directions = [(1, 1), (0, 1)]
+for dy, dx in directions:
+    print(dy, dx)  
+import random
+print(random.choice([True, False]))

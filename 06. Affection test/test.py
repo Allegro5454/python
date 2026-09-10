@@ -87,40 +87,6 @@ def chest_fight(stdscr, max_x):
 
 
 
-def fight_mechanic(stdscr, max_x, health, enemy_health, enemy_damage_min, enemy_damage_max):
-
-    while enemy_health >= 0:
-        key = stdscr.getkey()
-        stdscr.addstr(38, max_x, "                                     ")
-        stdscr.addstr(38, max_x, f"Enemy Health: {enemy_health} | Your Health: {health}")
-        stdscr.addstr(43, max_x,"                                ")
-        if key == "1" or key == "2" or key == "3":
-            if key == "1":
-                enemy_health -= int(weapon["basic_sword"])
-                stdscr.addstr, max_x, f"You attacked: {int(weapon["basic_sword"])} "
-            elif key == "2":
-                dating(stdscr, max_x)
-                time.sleep(1)
-            elif key == "3":
-                if "potion" in eq:
-                    health =+ 50
-                    stdscr.addstr(43, max_x, "Healed 50hp")
-                    eq.remove("potion")    
-            enemy_attack = random.randint(enemy_damage_min, enemy_damage_max)
-            health = health - enemy_attack
-            stdscr.addstr(43, max_x,f"Goblin attacked: -{enemy_attack}hp")
-            stdscr.refresh()
-        else:
-            stdscr.addstr(43, max_x,f"Press 1, 2 or 3")
-            stdscr.refresh()
-        if health <= 0:
-            break    
-        time.sleep(1)
-    if enemy_health <= 0:
-        stdscr.addstr(38,max_x,"Enemy health: 0 ") 
-        stdscr.addstr(43, max_x,"                                ")    
-        stdscr.addstr(43,max_x,"You won")
-        time.sleep(2)
     else:
         game_over(stdscr)
 def game_over(stdscr):
