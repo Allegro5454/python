@@ -7,9 +7,12 @@ import random
 class Player:
     def __init__(self, start_y, start_x, grid, min_weapon_damage, max_weapon_damage):
         self.eq = {
-            "potions":3,
-            "keys":0
+            "health_potions":3,
+            "keys":0,
+            "strenght_apples":1,
             }
+        self.stamina = 100
+        self.key_found = False
         self.eq_open = 0
         self.health = 100
         self.weapon = "basic_sword"
@@ -40,7 +43,7 @@ class Player:
         elif key == "d":
             self.x =self.x + 1
         wanted_tile = self.grid[self.y][self.x]
-        if wanted_tile == "#" or wanted_tile == "c":
+        if wanted_tile == "#" or wanted_tile == "c" or wanted_tile == "o":
             self.x, self.y = prev_x, prev_y
             stdscr.addstr(self.y,self.x,"@")
         else:
@@ -63,38 +66,49 @@ class Player:
             check_y = self.y + dy
             if 0 <= check_y < max_y and 0 <= check_x < max_x:         
                 if self.grid[check_y][check_x] == "c":
-                    self.open_chest(stdscr, max_x)
-                    break 
-    def open_chest(self, stdscr, max_x):
-        
-        stdscr.refresh()
-        if random.choice([True, False]):
-            if random.randint(1, 5) == 1:
-                current_enemy = Enemy(150, 16 , 24)
-            else:
-                current_enemy = Enemy(85, 8, 12)
-            max_x = len(self.grid[0])
-            stdscr.addstr(39, max_x, "Choose action:")
-            stdscr.addstr(40, max_x, f"1: Attack with {self.weapon}")
-            stdscr.addstr(41, max_x, f"2: Ask on a date")
-            stdscr.addstr(42, max_x, "3: Sneak")        
-            stdscr.refresh()
-            while True:
-                key = stdscr.getkey()
-                if key == "1":
-                    fight_mechanic(stdscr, self , current_enemy)
+                    self.open_chest(stdscr)
+                    self.grid[check_y][check_x] = "o"
+                    self.redraw_map(stdscr)
                     break
-                elif key == "2":
-                    #date_mechanic(stdscr, self)
-                    break
-                elif key == "3":
-                    #sneak_mechanic(stdscr, self)
-                    break
-                else:
-                    time.sleep(1)
+    def redraw_map(self, stdscr):
+        if self.key_found:
+            self.key_found = False
         else:
-            stdscr.addstr(39, max_x, "You have found a key")
-            self.eq["keys"] = 1
+            stdscr.clear()
+            for row_height,row in enumerate(self.grid):
+                stdscr.addstr(row_height,0,"".join(row))
+            stdscr.addstr(self.y,self.x,"@")
+            stdscr.refresh() 
+    def open_chest(self, stdscr):
+        stdscr.refresh()
+        #if random.choice([True, False]):
+        if random.randint(1, 5) == 1:
+            current_enemy = Enemy(150, 16 , 24)
+        else:
+            current_enemy = Enemy(85, 8, 12)
+        max_x = len(self.grid[0])
+        stdscr.addstr(39, 0, "Choose action:")
+        stdscr.addstr(40, 0, f"1: Attack")
+        stdscr.addstr(41, 0, f"2: Ask on a date")
+        stdscr.addstr(42, 0, "3: Sneak")        
+        stdscr.refresh()
+        while True:
+            key = stdscr.getkey()
+            if key == "1":
+                fight_mechanic(stdscr, self , current_enemy)
+                break
+            elif key == "2":
+                #date_mechanic(stdscr, self)
+                break
+            elif key == "3":
+                #sneak_mechanic(stdscr, self)
+                break
+            else:
+                time.sleep(1)
+        #else:
+            #self.key_found = True
+            #stdscr.addstr(39, 0, "You have found a key")
+            #self.eq["keys"] = 1
             
 
 def load_full(file_path):
@@ -136,52 +150,142 @@ def main_menu(stdscr):
 def fight_mechanic(stdscr, hero, enemy):
     stdscr.clear()
     goblin = load_full('maps/goblin.txt')
+    border = load_full('maps/border.txt')
     stdscr.addstr(0,0, goblin.read())
+    stdscr.addstr(38,0,border.read())
     stdscr.addstr(37,0, f"You have encountered a goblin named {enemy.name}")
     min_dmg, max_dmg = hero.min_hero_damage, hero.max_hero_damage
     bash_damage = min_dmg
+    stun_status = 0
+    hero_dead = 0
+    enemy_attack = random.randint(1, 100)
+    current_attack = 1
+    if enemy_attack <= 60:
+        enemy_attack = 1
+    elif enemy_attack > 60 and enemy_attack <= 80:
+        enemy_attack = 2
+    else:
+        enemy_attack = 0 
     while enemy.health_points >= 0:
-        for i in range(38,41):
-            stdscr.addstr(i,0,"                                                                ")
+        if hero.stamina < 95:
+            hero.stamina += 10
+        elif hero.stamina >= 95:
+            hero.stamina = 100
+        if hero.stamina >= 50:
+            miss_chance = 5
+            dmg_multiplier = 1
+            crit_chance = 15
+        elif hero.stamina < 50 and hero.stamina >= 20:
+            miss_chance = 15
+            dmg_multiplier = 0,85
+            crit_chance = 12
+        else:
+            miss_chance = 30
+            dmg_multiplier = 0,60
+            crit_chance = 5
+        if enemy_attack == 0:
+            current_attack = 0
+            msg = f"{enemy.name} draws his weapon back"
+            stdscr.addstr(48,1,msg.ljust(75))
+        elif enemy_attack == 1:
+            current_attack = 1
+            insult_generator = enemy.insults[random.randint(1, 14)]  
+            msg = f"{enemy.name}: {insult_generator}"
+            stdscr.addstr(48,1,msg.ljust(75))
+        elif enemy_attack == 2:
+            current_attack = 2
+            msg = f"{enemy.name}: {random.choice(enemy.defensive_insults)}"
+        if current_attack != 0:
+            enemy_attack = random.randint(1, 100)
+            if enemy_attack <= 60:
+                enemy_attack = 1
+            elif enemy_attack > 60 and enemy_attack <= 80:
+                enemy_attack = 2
+            else: 
+                enemy_attack = 0
+        msg = f"Enemy hp: {enemy.health_points} ; Your hp: {hero.health}; Your stamina: {hero.stamina}"
+        stdscr.addstr(39,1, msg.ljust(30))  
+        stdscr.addstr(40,1,f"Stab with {hero.weapon}")
+        stdscr.addstr(41,1,f"Bash with hilt of {hero.weapon}")
+        stdscr.addstr(42,1,f"Use a heal potion. Potions left:{hero.eq["health_potions"]}")
+        stdscr.addstr(43,1,f"Pair")
         stdscr.refresh()
-        stdscr.addstr(38,0, f"Enemy hp: {enemy.health_points} ; Your hp: {hero.health}")  
-        stdscr.addstr(39,0,f"Stab with {hero.weapon}")
-        stdscr.addstr(40,0,f"Bash with hilt of {hero.weapon}")
-        stdscr.addstr(41,0,f"Use a heal potion. Potions left:{hero.eq["potions"]}")
         key = stdscr.getkey()
+        if hero.health <= 0:
+            goblin.close()
+            border.close()
+            stdscr.clear()
+            game_over(stdscr)
+            break
         while True:
+            miss_attack = random.randint(1,100)
             if key == "1":
-                attack = random.choice([min_dmg, max_dmg])
-                enemy.health_points = enemy.health_points - attack 
-                stdscr.addstr(44,0,f"Your stab dealed {attack}")
+                if miss_attack >= miss_chance:
+                    attack = random.randint(min_dmg, max_dmg) * dmg_multiplier
+                    enemy.health_points = enemy.health_points - attack
+                    msg =  f"Your stab dealed {attack}"
+                    stdscr.addstr(45,1, msg.ljust(75))
+                else:
+                    msg =  f"Your Your hand slipped"
+                    stdscr.addstr(45,1, msg.ljust(75))
+                hero.stamina -= 12
                 break
             elif key == "2":
-                enemy.health_points = enemy.health_points - bash_damage
-                stun_chance = random.randint(50, 100)
-                stun_work = random.randint(1, 100)
-                if stun_work > stun_chance:
-                    stdscr.addstr(44,0,f"Your bash dealed {attack}")
+                if miss_attack >= miss_chance:
+                    enemy.health_points = enemy.health_points - bash_damage
+                    stun_chance = random.randint(35, 100)
+                    stun_work = random.randint(1, 100)
+                    if stun_work > stun_chance:
+                        msg = f"Your bash dealed {bash_damage}"
+                        stdscr.addstr(45,1,msg.ljust(75))
+                    elif current_attack == 0 or stun_work < stun_chance:
+                        msg = f"Your bash dealed {bash_damage} and stunned the enemy"
+                        stdscr.addstr(45,1,msg.ljust(75))
+                        stun_status = 1
                 else:
-                    stdscr.addstr(44,0,f"Your bash dealed {attack} and stunned the enemy")
-                    stun_status = 1
+                    msg = "Your grip was to weak"
+                    stdscr.addstr(45,1,msg.ljust(75))
+                hero.stamina -= 35
                 break
-            elif key == "3" and hero.eq["potions"] >= 0:
-                hero.eq["potions"] = hero.eq["potions"] - 1
-                hero.health = hero.health + 100
+            elif key == "4":
+                    
+            elif key == "3" and hero.eq["health_potions"] > 0:
+                if miss_attack >= miss_chance:
+                    hero.eq["health_potions"] = hero.eq["health_potions"] - 1
+                    hero.health = hero.health + 100
+                    msg = f"You have succesfully healed 100hp"
+                    stdscr.addstr(45,1,msg.ljust(75))
+                else:
+                    hero.eq["health_potions"] = hero.eq["health_potions"] - 1
+                    msg = f"Potion fell out of your hands"
+                    stdscr.addstr(45,1,msg.ljust(75))
                 break
             else:
-                if hero.eq["potion"] >= 0:
-                    stdscr.addstr(42,0,"Press another key")
+                if hero.eq["health_potions"] >= 0:
+                    msg = "Press another key"
+                    stdscr.addstr(45,1,msg.ljust(75))
                 else:
-                    stdscr.addstr(43,0,"No potions left")        
-        if key != "2" or stun_status !=1:
-            stun_status = 0
-            if random.choice(["Normal","Strong"]) == "Normal":
-                hero.health = hero.health - enemy.min_damage
-                stdscr.addstr(43,0,f"{enemy.name} hit you with normal attack")
-            else:
-                hero.health = hero.health - enemy.max_damage
-                stdscr.addstr(43,0,f"{enemy.name} hit you with Strong attack")
+                    msg = "No potions left"
+                    stdscr.addstr(45,1,msg.ljust(75))
+            stdscr.refresh()    
+        if current_attack == 0:
+            current_attack = 3
+            enemy_attack = 1
+        elif current_attack == 1:
+            dmg = random.randint(enemy.min_damage, enemy.max_damage)
+            hero.health = hero.health - dmg
+            msg = f"{enemy.name} swings his sword -{dmg} dmg"
+            stdscr.addstr(46,1,msg.ljust(75))
+        elif current_attack == 3:
+            dmg = random.randint(enemy.min_damage, enemy.max_damage) * 2.5
+            hero.health = hero.health - dmg
+            msg = f"{enemy.name} unleash hell on you -{dmg} dmg"
+            stdscr.addstr(46,1,msg.ljust(75))
+        else:
+            enemy_heal = random.randint(1, 10)
+            msg = f"{enemy.name} healed {enemy_heal} hp"
+            enemy.health_points = enemy.health_points + enemy_heal
+            stdscr.addstr(46,1,msg.ljust(75))
     stdscr.clear()
     dead = load_full('maps/dead.txt')
     stdscr.addstr(0,0,dead.read())
@@ -189,11 +293,24 @@ def fight_mechanic(stdscr, hero, enemy):
     stdscr.addstr(44,0,"Press any key to continue...")
     stdscr.refresh()
     stdscr.getkey()
-    pass
+    dead.close()
+    goblin.close()
+    border.close()
 
-
-
-
+def game_over(stdscr):
+    while True:
+        msg = load_full("maps/over.txt")
+        stdscr.clear()
+        stdscr.addstr(0,0,msg.read())
+        stdscr.refresh()
+        time.sleep(3)
+        msg = load_full("maps/again.txt")
+        stdscr.clear()
+        stdscr.addstr(0,0,msg.read())
+        stdscr.refresh()
+        time.sleep(3)
+        
+        
 class Enemy:
     def __init__(self, health , min_damage , max_damage):
         self.health_points = health
@@ -205,7 +322,32 @@ class Enemy:
         4:"Marcin",
         5:"Szczepan"
         }
-
+        self.insults = {
+            1:"Gag the torch! Snuff it, smash it!",
+            2:"Mind the tripwire, fool! Push them into the pit!",
+            3:"Stab the ankles! Bring the meat low!",
+            4:"Watch the swinging steel! Under, go under!",
+            5:"Dibs on the copper! Dibs on the pointy hat!",
+            6:"Spit the dart! Make the poison crawl in the blood!",
+            7:"Drop the grate! Lock them in the hall!",
+            8:"Break the shield arm! Swarm the back!",
+            9:"Too narrow for your big blade, tall-one! Walls have teeth!",
+            10:"Who triggered the darts?! That was our trap, you dung-head!",
+            11:"Skin the knuckles, snatch the belt pouch!",
+            12:"More coming from the tunnels! Pile on, drag them down!",
+            13:"Claw the eyes out! Blind meat don't hit back!",
+            14:"Crack the ribs, find the marrow!"
+        }
+        self.defensive_insults = ["Just me, yes... but the tunnel is tight, and the shiv is tipped with rot",
+            "Step on the trigger-stone, tall-thing. Go on. One step.",
+            "My hole. My ditch. You fit into the crawlway, but you won't crawl back out.",
+            "I don't need a pack to watch you bleed out in the gravel.",
+            "Too fat for the crack in the stone. Can't reach me, can't smash me.",
+            "One spear, one gap. The dark works for free.",
+            "Come closer to the grating. The drop below is deep and hungry.",
+            "No brothers left to take a share. All your shiny trinkets stay with me.",
+            "The trip-wire hums. Do you hear it? You're standing right over the teeth.",
+            "I know where the roof is thin. Swing that blade again, cave it on us both."]
         self.complements = {
             1:"muscular body",
             2:"majestic sword",
@@ -228,7 +370,6 @@ class Enemy:
             4:f'The smile vanishes into an impenetrable mask. {self.name} stares past the flame. "My words are not your entertainment. Do not mistake breathing air for an invitation."',
             5:f'{self.name} recoils into rigid, iron stillness. "You speak of manners while trespassing with your eyes. We have concluded all that was to be shared."'
         }
-        self.health = 0
         self.min_damage, self.max_damage = min_damage, max_damage
     
 
